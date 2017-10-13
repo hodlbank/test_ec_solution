@@ -2,6 +2,7 @@ const BN              = require('bignumber.js');
 BN.config({ MODULO_MODE: BN.EUCLID });
 const CryptoJS        = require('crypto-js');
 const S               = require('string');
+const BNJS            = require('bn.js');
 
 
 function main(maxAttempts) {
@@ -22,15 +23,24 @@ function main(maxAttempts) {
   var x, y, found = false;
   for(var i=0; i < maxAttempts; ++i){
     x   = pointHashScalar.add(i).mod(curveOrder);
-    var y2  = x.pow(3).add(3).mod(curveOrder);
-    y   = y2.sqrt();
-    if (y.pow(2).eq(y2)) {
+    var y2  = x.pow(3, curveOrder).add(3).mod(curveOrder);
+    // y   = y2.sqrt(); // this is incorrect way of finding square root
+    x           = new BNJS(x.toString(16), 16);
+    y2           = new BNJS(y2.toString(16), 16);
+    curveOrder  = new BNJS(curveOrder.toString(16), 16);
+    y = x.pow(
+      curveOrder.add(new BNJS(1)).div(new BNJS(4))
+    ).mod(curveOrder);
+    // x^((field modulus + 1)/4)
+    if (y.pow(2, curveOrder).eq(y2)) {
       found = true;
       console.log('pointHash found in ' + (i+1) + ' attempts.');
       break;
     } else {
-      console.log("y2=", y2.toString(10));
-      console.log("y.pow(2)=", y.pow(2).toString(10));
+      if (i < 100) {
+        console.log("y2=", y2.toString(10));
+        console.log("y.pow(2)=", y.pow(2, curveOrder).toString(10));
+      }
     }
   }
   if (!found) {
